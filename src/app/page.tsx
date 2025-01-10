@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Card,
   CardHeader,
@@ -17,27 +18,48 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import HamburgerMenu from "@/components/ui/menuburguer";
 import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import { useViewport } from "@/context/viewport/ViewportContext";
-import { cn } from "@/lib/utils";
-import { Post } from "@/service/posts/PostModel";
+import { CreatePost, Post } from "@/service/posts/PostModel";
 import { PostService } from "@/service/posts/PostService";
 import { formatDate } from "@/utils/formatting";
+import { postSchema } from "@/utils/schema-form-rules/posts/create-post";
 import Image from "next/image";
 import React from "react";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { ListItem } from "@/components/ListItem";
 import { IoIosCreate } from "react-icons/io";
+import { TiDelete } from "react-icons/ti";
+import { MdDeleteForever } from "react-icons/md";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const components: { title: string; href: string; description: string }[] = [
   {
@@ -62,13 +84,43 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
 
   const [isOpen, setIsOpen] = useState(false);
+  const [deleteModalOpen, setDeleteOpenModal] = useState(false);
+
+  const { isLargeScreen } = useViewport();
 
   const getPosts = async (): Promise<Post[]> => {
     const response = await PostService.GetPosts();
     return response;
   };
 
-  const { isLargeScreen } = useViewport();
+  const createPost = async (post: CreatePost): Promise<Post> => {
+    try {
+      const response = await PostService.CreatePost(post);
+      return response;
+    } catch (error) {
+      console.log(error);
+      throw new Error();
+    }
+  };
+
+  const deletePost = async (id: number): Promise<void> => {
+    try {
+      await PostService.DeletePost(id);
+      setPosts((prevPosts) => prevPosts.filter((post) => post.id !== id));
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const form = useForm<z.infer<typeof postSchema>>({
+    resolver: zodResolver(postSchema),
+    defaultValues: {
+      author: "",
+      content: "",
+      description: "",
+      title: "",
+    },
+  });
 
   useEffect(() => {
     const fetchLibrary = async () => {
@@ -86,6 +138,17 @@ export default function Home() {
 
     fetchLibrary();
   }, []);
+
+  const onSubmit = async (post: z.infer<typeof postSchema>) => {
+    try {
+      const newPost = await createPost(post);
+      setPosts((prevPosts) => [newPost, ...prevPosts]);
+      setIsOpen(false);
+      form.reset();
+    } catch (error) {
+      console.error("Erro ao criar o post:", error);
+    }
+  };
 
   return (
     <div className="h-dvh flex flex-col">
@@ -177,84 +240,148 @@ export default function Home() {
           <DialogHeader>
             <DialogTitle>Crie um novo post</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-start">
-                Título <span className="text-orange-600">*</span>
-              </Label>
-              <Input
-                id="name"
-                className="col-span-4"
-                placeholder="Digite um título"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-start">
-                Autor <span className="text-orange-600">*</span>
-              </Label>
-              <Input
-                id="name"
-                className="col-span-4"
-                placeholder="Digite seu nome"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-start">
-                Descrição <span className="text-orange-600">*</span>
-              </Label>
-              <Textarea
-                placeholder="Digite uma descrição a sua publicação"
-                className="col-span-4"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-start">
-                Conteúdo <span className="text-orange-600">*</span>
-              </Label>
-              <Textarea
-                placeholder="Comece uma publicação"
-                className="col-span-4"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit">Save changes</Button>
-          </DialogFooter>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="grid gap-4 py-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem className="grid grid-cols-4 items-center gap-4">
+                      <FormLabel htmlFor="title" className="text-start">
+                        Título <span className="text-orange-600">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          id="title"
+                          className="col-span-4"
+                          placeholder="Digite um título"
+                          {...field}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="author"
+                  render={({ field }) => (
+                    <FormItem className="grid grid-cols-4 items-center gap-4">
+                      <FormLabel htmlFor="author" className="text-start">
+                        Autor <span className="text-orange-600">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          id="author"
+                          className="col-span-4"
+                          placeholder="Digite um título"
+                          {...field}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="grid grid-cols-4 items-center gap-4">
+                      <FormLabel htmlFor="description" className="text-start">
+                        Descrição <span className="text-orange-600">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          id="description"
+                          className="col-span-4"
+                          placeholder="Digite um título"
+                          {...field}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem className="grid grid-cols-4 items-center gap-4">
+                      <FormLabel htmlFor="content" className="text-start">
+                        Conteúdo <span className="text-orange-600">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Digite aqui o conteúdo..."
+                          {...field}
+                          className="col-span-4"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit">Salvar</Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
-      <div
-        className="fixed cursor-pointer bottom-[50px] right-[69px] transform transition-transform duration-200 hover:scale-110"
-        onClick={() => setIsOpen(true)} // Open the dialog on click
-      >
-        <IoIosCreate className="relative w-12 h-12" />
+      {/*  MODAL DE EXCLUSÃO */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteOpenModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <ul className="grid gap-5 p-4">
+            {posts.map((post) => (
+              <li
+                key={post.id}
+                className="border p-2 rounded-md flex justify-between items-center"
+              >
+                <div>
+                  <h1>{post.title}</h1>
+                  <p className="text-[0.8em] text-gray-600">
+                    {post.description}
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <TiDelete className="text-red-500 w-6 h-6 cursor-pointer" />
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Você tem certeza disso ?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Essa ação não terá retorno. Esse post será apagado
+                        permanentemente!
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-red-500"
+                        onClick={() => deletePost(post.id)}
+                      >
+                        Continue
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
+      <div className="fixed bottom-[50px] right-[69px] flex flex-col items-center justify-center">
+        <MdDeleteForever
+          className="w-12 h-12 text-red-500 transform transition-transform duration-200 hover:scale-110 cursor-pointer ml-[-8px]"
+          onClick={() => setDeleteOpenModal(true)}
+        />
+        <IoIosCreate
+          className="w-12 h-12 transform transition-transform duration-200 hover:scale-110 cursor-pointer"
+          onClick={() => setIsOpen(true)}
+        />
       </div>
     </div>
   );
 }
-
-const ListItem = React.forwardRef<
-  React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, children, ...props }, ref) => {
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <a
-          ref={ref}
-          className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-            className,
-          )}
-          {...props}
-        >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-            {children}
-          </p>
-        </a>
-      </NavigationMenuLink>
-    </li>
-  );
-});
-ListItem.displayName = "ListItem";

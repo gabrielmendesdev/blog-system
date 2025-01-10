@@ -8,3 +8,10 @@ export interface Post {
   updatedAt: string;
   deletedAt: string | null;
 }
+
+export interface CreatePost {
+  title: string;
+  description: string;
+  content: string;
+  author: string;
+}
