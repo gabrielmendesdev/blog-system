@@ -1,5 +1,5 @@
 export interface Post {
-  id: string;
+  id: number;
   title: string;
   description: string;
   content: string;
@@ -7,8 +7,4 @@ export interface Post {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
-}
-
-export interface Posts {
-  posts: Post[];
 }
