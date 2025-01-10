@@ -18,22 +18,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import HamburgerMenu from "@/components/ui/menuburguer";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { useViewport } from "@/context/viewport/ViewportContext";
 import { CreatePost, Post } from "@/service/posts/PostModel";
 import { PostService } from "@/service/posts/PostService";
 import { formatDate } from "@/utils/formatting";
 import { postSchema } from "@/utils/schema-form-rules/posts/create-post";
-import Image from "next/image";
-import React from "react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -45,7 +35,6 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { ListItem } from "@/components/ListItem";
 import { IoIosCreate } from "react-icons/io";
 import { TiDelete } from "react-icons/ti";
 import { MdDeleteForever } from "react-icons/md";
@@ -60,24 +49,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-const components: { title: string; href: string; description: string }[] = [
-  {
-    title: "Desenvolvimento Web",
-    href: "#",
-    description: "Lorem ipsum dolor sit amet consectetur, adipisicing elit.",
-  },
-  {
-    title: "Mobile Apps",
-    href: "#",
-    description: "Lorem ipsum dolor sit amet consectetur, adipisicing elit.",
-  },
-  {
-    title: "Consultoria",
-    href: "#",
-    description: "Lorem ipsum dolor sit amet consectetur, adipisicing elit..",
-  },
-];
+import { Navbar } from "@/components/Navbar";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -87,6 +60,12 @@ export default function Home() {
   const [deleteModalOpen, setDeleteOpenModal] = useState(false);
 
   const { isLargeScreen } = useViewport();
+
+  const router = useRouter();
+
+  const pushArticlePage = (postId: number) => {
+    router.push(`/noticias/${postId}`);
+  };
 
   const getPosts = async (): Promise<Post[]> => {
     const response = await PostService.GetPosts();
@@ -127,7 +106,6 @@ export default function Home() {
       setIsLoading(true);
       try {
         const postsData = await getPosts();
-        console.log(postsData);
         setPosts(postsData);
       } catch (error) {
         console.error("Erro ao buscar a biblioteca do usuário:", error);
@@ -152,51 +130,7 @@ export default function Home() {
 
   return (
     <div className="h-dvh flex flex-col">
-      <header className="fixed top-0 w-full h-16 border-b-2 flex items-center justify-between bg-white z-50 m-auto p-10">
-        <div>
-          <Image
-            src="/blog-image.png"
-            alt="Icone do blog"
-            width={60}
-            height={60}
-          />
-        </div>
-        {isLargeScreen ? (
-          <ul className="flex gap-6">
-            <li className="cursor-pointer p-3 hover:bg-gray-300 transition">
-              Blog
-            </li>
-            <NavigationMenu>
-              <NavigationMenuList>
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger>Serviços</NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid gap-3 p-4 w-[300px] grid-cols-1">
-                      {components.map((component) => (
-                        <ListItem
-                          key={component.title}
-                          title={component.title}
-                          href={component.href}
-                        >
-                          {component.description}
-                        </ListItem>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
-            <li className="cursor-pointer p-3 hover:bg-gray-300 transition">
-              Sobre
-            </li>
-            <li className="cursor-pointer p-3 hover:bg-gray-300 transition">
-              Contato
-            </li>
-          </ul>
-        ) : (
-          <HamburgerMenu />
-        )}
-      </header>
+      <Navbar />
       <main className="mt-28">
         {isLoading ? (
           <Spinner show={isLoading} />
@@ -210,6 +144,7 @@ export default function Home() {
               <Card
                 key={post.id}
                 className="border-none shadow-none cursor-pointer group"
+                onClick={() => pushArticlePage(post.id)}
               >
                 <CardHeader>
                   <CardTitle className="transition group-hover:text-blue-500">
@@ -330,7 +265,8 @@ export default function Home() {
       {/*  MODAL DE EXCLUSÃO */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteOpenModal}>
         <DialogContent className="sm:max-w-[425px]">
-          <ul className="grid gap-5 p-4">
+          <DialogTitle>Remover post</DialogTitle>
+          <ul className="grid gap-5 max-h-[450px] overflow-y-auto">
             {posts.map((post) => (
               <li
                 key={post.id}
@@ -349,7 +285,7 @@ export default function Home() {
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>
-                        Você tem certeza disso ?
+                        Você tem certeza disso?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
                         Essa ação não terá retorno. Esse post será apagado

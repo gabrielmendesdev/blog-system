@@ -11,6 +11,15 @@ export const PostService = {
     }
   },
 
+  GetPostById: async (id: number): Promise<Post> => {
+    try {
+      const response = await api.get<Post>(`/posts/${id}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Não foi possível encontrar os posts: ${error}`);
+    }
+  },
+
   CreatePost: async (post: CreatePost): Promise<Post> => {
     try {
       // const { author, content, description, title } = post
